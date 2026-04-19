@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+eggs/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code
+.claude/
+
+# Codex
+.codex
+
+# Logs
+*.log
+logs/
+
+# Archive (old files)
+archive/
+Manuscript_Minor_Revision/
+results/logs/
+results/*/shards/
+
+# Manuscript and review PDFs (paper outputs stay tracked)
+*.pdf
+!paper_outputs/**/*.pdf
+
+# Reproducibility archive
+archive/
+
+# Large data files (optional - uncomment if needed)
+# *.xlsx
+# *.csv
+# *.npz

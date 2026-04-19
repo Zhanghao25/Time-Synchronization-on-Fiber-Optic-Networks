@@ -1,0 +1,26 @@
+# Environment: conda jasa
+# Python 3.10.19
+
+# Core dependencies
+numpy==1.24.3
+pandas==2.0.3
+scipy==1.10.1
+networkx==3.0
+scikit-learn==1.3.0
+openpyxl==3.1.2
+
+# R integration (rpy2>=3.6 has numpy compatibility issues)
+rpy2==3.5.11
+
+# Visualization (optional)
+matplotlib==3.7.1
+seaborn==0.12.2
+
+# ===========================================
+# R Environment (required)
+# ===========================================
+# R version: 4.3.3
+#
+# Install R packages in R console:
+#   install.packages("ncvreg")   # tested: 3.16.0
+#   install.packages("L0Learn")  # tested: 2.1.0
