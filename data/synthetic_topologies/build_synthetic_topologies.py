@@ -14,7 +14,6 @@ Design:
 Outputs:
   combined: synthetic_topologies_combined.xlsx
     - 3 raw edge sheets
-    - 1 manifest sheet
 
 Usage:
   python data/synthetic_topologies/build_synthetic_topologies.py [--out_dir DIR]
@@ -379,7 +378,6 @@ def main():
     out_dir.mkdir(parents=True, exist_ok=True)
 
     raw_combined = out_dir / "synthetic_topologies_combined.xlsx"
-    manifest = []
     with pd.ExcelWriter(raw_combined, engine="openpyxl") as raw_writer:
 
         for city_idx, hard_k_target in enumerate(LEFT_HARD_TARGETS, start=1):
@@ -453,39 +451,10 @@ def main():
                 # ── Write raw sheet to combined excel ──
                 df_raw.to_excel(raw_writer, index=False, sheet_name=sheet)
 
-                manifest.append({
-                    "sheet": sheet,
-                    "scenario_label": f"synthetic zeta={int(ZETA_MAP[hard_k_target] * 100)}%, alpha={target_ratio:.2f}",
-                    "legacy_sheet": legacy_sheet,
-                    "zeta": ZETA_MAP[hard_k_target],
-                    "seed": seed,
-                    "target_ratio": target_ratio,
-                    "alpha_merged": alpha_merged,
-                    "alpha_raw": alpha_raw,
-                    "left_hard_target": hard_k_target,
-                    "left_hard_real": left_stats["hard_real"],
-                    "left_hard_backbone": hard_backbone,
-                    "left_hard_backbone_max_depth": left_stats["backbone_max"],
-                    "left_hard_leaf_max_depth": left_stats["leaf_max"],
-                    "left_edges_total": left_total,
-                    "right_edges_merged": right_stats["total"],
-                    "right_edges_raw": G_raw.number_of_edges() - left_total,
-                    "total_edges_merged": len(df_merged),
-                    "total_edges_raw": len(df_raw),
-                    "merged_leaves": merged_leaves,
-                    "raw_leaves": raw_leaves,
-                    "merged_nonzero": merged_nz,
-                    "raw_nonzero": raw_nz,
-                    "ratio_merged_actual": merged_nz / len(df_merged),
-                    "ratio_raw_actual": raw_nz / len(df_raw),
-                })
-
                 print(f"  {sheet}: merged={len(df_merged)} edges "
                       f"({merged_leaves} leaves), "
                       f"raw={len(df_raw)} edges ({raw_leaves} leaves), "
                       f"hard={left_stats['hard_real']}")
-
-        pd.DataFrame(manifest).to_excel(raw_writer, index=False, sheet_name="manifest")
 
     print("\nDone.")
     print(f"Output: {out_dir}")

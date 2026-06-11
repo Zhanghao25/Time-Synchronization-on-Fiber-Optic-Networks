@@ -1,158 +1,71 @@
 # Tree-Structured Sparse Linear Equations for Fiber Optic Networks
 
-This repository is the reproducibility package for the manuscript *On Large-Scale System of Sparse Linear Equations with Tree Structures and its Applications to Fiber Optic Networks*. It implements the manuscript's TSLE pipeline built on SCAD (Smoothly Clipped Absolute Deviation) estimation and tree-structure-based augmentation.
+This repository is the reproducibility package for the manuscript *On Large-Scale System of Sparse Linear Equations with Tree Structures and its Applications to Fiber Optic Networks*. It implements the manuscript's TSLE pipeline built on SCAD (Smoothly Clipped Absolute Deviation) estimation and tree-structure-based augmentation, together with the Lasso / L0 / MCP comparison methods.
 
-## Overview
+## 1. Repository Structure
 
-This project implements and compares multiple regularization methods for sparse regression in hierarchical networks:
+```text
+jasa_minor/
+├── README.md
+├── requirements.txt           # Python dependencies + recorded R environment
+├── configs/
+│   └── seeds/                 # exact seed schedules for all shipped tables and figures
+├── data/
+│   ├── city1.xlsx             # real city network topologies
+│   ├── city2.xlsx
+│   ├── city3.xlsx
+│   └── synthetic_topologies/  # synthetic topology workbook + its generator script
+├── method/                    # all algorithm, experiment, and rendering code (flat, see Section 4)
+├── scripts/                   # one runnable script per paper output (see Section 5)
+│   ├── run_table1_s1.sh       # -> Table 1 + Table S.1
+│   ├── run_tables_s2_s5.sh    # -> Tables S.2-S.5
+│   ├── run_table_s6.sh        # -> Table S.6
+│   ├── run_table_s7.sh        # -> Table S.7
+│   ├── run_figure5.sh         # -> Figure 5
+│   ├── run_figure_s5.sh       # -> Figure S.5
+│   ├── run_figure_s6.sh       # -> Figure S.6
+│   ├── run_all_tables.sh      # shared table engine called by the run_table*.sh wrappers
+│   └── run_all_figures.sh     # shared figure engine called by the run_figure*.sh wrappers
+└── results/
+    ├── raw/                   # canonical experiment workbooks (inputs to rendering)
+    │   ├── main_scad/         # TSLE results (Table 1, Table S.6)
+    │   ├── other_methods/     # Lasso/L0/MCP results (Tables S.2-S.5)
+    │   ├── synthetic/         # synthetic results (Table S.7)
+    │   └── lur_figures/       # LUR metrics (Figure 5, Figures S.5-S.6)
+    ├── tables/                # final paper tables: table1.* ... table_s7.* (pdf/csv/xlsx)
+    └── figures/               # final paper figures: figure5_city1.* etc. (pdf/png + plot data)
+```
 
-- **4-Step TSLE Procedure** (primary contribution)
-  - Step 1: TSLE on the original matrix
-  - Step 2: TSLE on the merged matrix with path reduction
-  - Step 3: TSLE-Random with random augmentation
-  - Step 4: TSLE-Addition with LUR-guided iterative augmentation
-- **Comparison Methods**
-  - Lasso
-  - L0 regularization
-  - MCP
+- `method/` holds all Python code: the TSLE algorithm and baselines, the experiment drivers that run them, and the postprocess code that turns raw result workbooks into the paper's tables and figures.
+- `scripts/` maps one shell entrypoint to each paper output: `bash scripts/run_table1_s1.sh` reproduces Table 1, `bash scripts/run_figure5.sh` reproduces Figure 5, and so on.
+- `results/raw/` ships the canonical experiment workbooks behind the submitted paper; `results/tables/` and `results/figures/` ship the rendered publication outputs.
 
-## Installation
+## 2. Installation
 
 ```bash
-conda create -n jasa python=3.10.19
+conda create -n jasa python=3.10
 conda activate jasa
+conda install -c conda-forge r-base=4.3.3
 
-sudo apt-get update
-sudo apt-get install r-base r-base-dev
+Rscript -e "install.packages('remotes', repos='https://cloud.r-project.org')"
+Rscript -e "remotes::install_version('ncvreg', '3.16.0', repos='https://cloud.r-project.org')"
+Rscript -e "remotes::install_version('L0Learn', '2.1.0', repos='https://cloud.r-project.org')"
 
-Rscript -e "install.packages(c('ncvreg', 'L0Learn'), repos='https://cloud.r-project.org')"
 pip install -r requirements.txt
 ```
 
 The tested full-recomputation environment is:
 
-- R `4.3.3`
+- R `4.3.3` (conda-forge build)
 - `ncvreg` `3.16.0`
 - `L0Learn` `2.1.0`
 - conda OpenBLAS `0.3.30`
 
-See [`R_sessionInfo.txt`](R_sessionInfo.txt) for the recorded R session. Full experimental reruns should use these R package versions; newer CRAN releases may cause small numerical differences. If your CRAN mirror provides newer package versions, install the tested versions above with your preferred R package versioning tool before exact reruns.
+Full experimental reruns should use these R package versions; newer CRAN releases, a different BLAS, or platform differences may cause small numerical differences. The same environment record is kept in the comments of [`requirements.txt`](requirements.txt).
 
-## Reproducibility Guide
+**System**: tested on Linux/WSL. Large experiments benefit from high-memory machines (see Section 5). No GPU is required. macOS may require GNU bash/coreutils adjustments because the shell scripts use Linux-oriented tools such as `flock`, `wait -n`, and optional `tmux`.
 
-### Reproduce All Results
-
-```bash
-bash scripts/run_paper_tables.sh full all
-bash scripts/run_lur_figures.sh full
-```
-
-The repository also ships canonical `results/` workbooks and rendered `paper_outputs/` files. Rebuilding outputs from those workbooks should reproduce the submitted tables and figures exactly. Full experimental recomputation is deterministic under the tested software stack above, but R package, BLAS, and platform differences can cause small numerical differences.
-
-For a full table raw-data rerun after deleting generated table result workbooks, use `bash scripts/run_paper_tables.sh full all`. The script allows incomplete intermediate table renders while experiments are still running, then performs a strict final table rebuild after all table experiments finish. Run `bash scripts/run_lur_figures.sh full` separately for the LUR figure raw-data rerun. For experiment-only subset runs, set `SKIP_REFRESH_TABLES=1`.
-
-## Runtime and Hardware Guidance
-
-The repository supports two very different workloads:
-
-- **Export-only rebuilds** from the shipped canonical workbooks in `results/`
-- **Full experimental recomputation** from the raw city and synthetic data
-
-For most reviewers, the expensive part is **not** rebuilding the publication PDFs/XLSX files; it is rerunning the experiments.
-
-### Export-only rebuilds
-
-These commands read the shipped canonical workbooks and regenerate `paper_outputs/`:
-
-```bash
-conda run -n jasa python -u paper_build/build_tables_table1_s1_s7.py
-conda run -n jasa python -u paper_build/build_figures_figure5_s5_s6.py \
-  --metrics-dir results/lur_figures \
-  --output-dir paper_outputs/figures/readable
-```
-
-Observed runtime is typically **minutes**, not hours. A single CPU core and **< 8 GB RAM** are usually enough.
-
-Important distinction:
-
-- The `paper_build/*.py` commands above are **render-only**.
-- The shell orchestrators in `scripts/` are **experiment runners**. They recompute results and then refresh the publication outputs.
-- For example, `bash scripts/run_paper_tables.sh full synthetic` reruns the three synthetic scenarios before rebuilding `Table S.7`; it is not a simple table-render command.
-- `paper_build/build_tables_table1_s1_s7.py` fails fast when expected table entries are missing; pass `--allow-missing` only for diagnostic rendering.
-
-### Full experimental recomputation
-
-The estimates below refer to **clean experimental reruns**, not to export-only rendering. They are planning numbers for this codebase on a large-memory Linux server, not guarantees.
-
-| Workflow | Parallel run | Serial run | Observed memory profile |
-|---|---:|---:|---:|
-| `bash scripts/run_paper_tables.sh full table1` | ~6-24 hours | often >1 day | `city3` TSLE/SCAD jobs can reach ~140-180 GB RSS |
-| `bash scripts/run_paper_tables.sh full other_methods` | ~8-24 hours | often >1 day | heavy `city3` jobs can transiently reach ~260 GB RSS |
-| `bash scripts/run_paper_tables.sh full synthetic` | ~1-4 hours | ~4-8 hours | usually <32 GB RAM |
-| `bash scripts/run_lur_figures.sh full` | ~4-12 hours | often >1 day | `city3` LUR can reach ~150-165 GB RSS |
-
-Recommended planning numbers:
-
-- **Reviewer-facing rebuild only**: 1 CPU core, 8 GB RAM is enough.
-- **Full table rerun**: start with **>= 256 GB RAM** and multiple cores.
-- **Full figure rerun**: start with **>= 256 GB RAM**.
-- **Running full tables and full figures at the same time**: only do this if you control a machine in the **>1 TB RAM** class.
-
-### Parallelism and checkpointing
-
-- `scripts/run_paper_tables.sh` uses top-level task parallelism via `MAX_JOBS`.
-- `scripts/run_lur_figures.sh` runs the three city figure jobs in parallel in `full` mode.
-- The long-running experimental drivers all support checkpoint/resume and save progress at seed granularity:
-  - `experiments/scad_main_experiment.py`
-  - `experiments/other_methods_experiment.py`
-  - `experiments/compute_lur_metrics.py`
-- The shipped shell entrypoints already enable `--resume --checkpoint-interval 1` for these long jobs.
-
-Operational guidance:
-
-- On shared machines, start with a lower `MAX_JOBS` and scale up only after checking memory and I/O behavior.
-- `city3` is the dominant cost driver for both TSLE table runs and LUR figure runs.
-- If a long run is interrupted, restarting the same command will resume from the last checkpoint rather than starting over.
-
-### Paper Output Mapping
-
-Subset commands below assume the shipped canonical workbooks for the other tables remain present. If those workbooks were removed and only one subset should be recomputed, use `SKIP_REFRESH_TABLES=1` and rebuild the final tables after all required result workbooks are restored.
-
-| Paper Output | Command | Input Data | Result File | Run Plan |
-|---|---|---|---|---|
-| Table 1 (TSLE, r=1%,5%,10%) | `bash scripts/run_paper_tables.sh full table1` | `data/city{1,2,3}.xlsx` | `results/main_scad/scad_city{N}_ratio{R}.xlsx` | 100 deterministic random-seed runs; launcher base seed 42; exact schedule: `configs/seeds/tables_current.json` → `tables.scad_main` |
-| Table S.1 (tree structure summary) | `bash scripts/run_paper_tables.sh full table1` | `data/city{1,2,3}.xlsx` | `paper_outputs/tables/readable/table_s1_readable.pdf` | No random seed; deterministic topology summary from the city workbooks |
-| Table S.2-S.3 (other methods, original) | `bash scripts/run_paper_tables.sh full other_methods` | `data/city{1,2,3}.xlsx` | `results/other_methods/othermethods_original_city{N}_ratio{R}.xlsx` | 100 deterministic random-seed runs; launcher base seed 0; exact schedule: `configs/seeds/tables_current.json` → `tables.other_methods_original` |
-| Table S.4-S.5 (other methods, merged) | `bash scripts/run_paper_tables.sh full other_methods` | `data/city{1,2,3}.xlsx` | `results/other_methods/othermethods_merged_city{N}_ratio{R}.xlsx` | 100 deterministic random-seed runs; launcher base seed 0; exact schedule: `configs/seeds/tables_current.json` → `tables.other_methods_merged` |
-| Table S.6 (TSLE, r=15%,20%,30%) | `bash scripts/run_paper_tables.sh full table_s6` | `data/city{1,2,3}.xlsx` | `results/main_scad/scad_city{N}_ratio{R}.xlsx` | 100 deterministic random-seed runs; launcher base seed 42; exact schedule: `configs/seeds/tables_current.json` → `tables.scad_main` |
-| Table S.7 (synthetic) | `bash scripts/run_paper_tables.sh full synthetic` | `data/synthetic_topologies/synthetic_topologies_combined.xlsx` | `results/synthetic/synthetic_zeta{1pct,5pct,10pct}_alpha10.xlsx` | 100 deterministic random-seed runs; launcher base seed 42; exact schedule: `configs/seeds/tables_current.json` → `tables.synthetic_s7` |
-| Figure 5 (City 1 LUR) | `bash scripts/run_lur_figures.sh full` | `data/city1.xlsx` | `results/lur_figures/lur_city1_metrics.xlsx` → `paper_outputs/figures/readable/figure5_city1.pdf` | 100 deterministic random-seed runs; launcher base seed 42; exact schedule: `configs/seeds/figures/city1_final.json` |
-| Figure S.5 (City 2 LUR) | `bash scripts/run_lur_figures.sh full` | `data/city2.xlsx` | `results/lur_figures/lur_city2_metrics.xlsx` → `paper_outputs/figures/readable/figure_s5_city2.pdf` | 100 deterministic random-seed runs; launcher base seed 42; exact schedule: `configs/seeds/figures/city2_final.json` |
-| Figure S.6 (City 3 LUR) | `bash scripts/run_lur_figures.sh full` | `data/city3.xlsx` | `results/lur_figures/lur_city3_metrics.xlsx` → `paper_outputs/figures/readable/figure_s6_city3.pdf` | 100 deterministic random-seed runs; launcher base seed 42; exact schedule: `configs/seeds/figures/city3_final.json` |
-
-### How to Find Table 1 Numbers in Result Files
-
-Each TSLE result workbook (for example [`results/main_scad/scad_city1_ratio0.01.xlsx`](results/main_scad/scad_city1_ratio0.01.xlsx)) contains:
-
-- `Summary`: mean and standard deviation for Accuracy, Precision, Recall, and F0.5 by TSLE step
-- `Metadata`: run configuration, including `base_seed`, `experiment_count`, sparsity ratio, and paper tag
-- `Individual_Results`: per-experiment metrics with seed numbers
-- `Seed_Status`: checkpoint/resume status for completed seeds, when present
-
-Table 1 values correspond to the `*_mean` columns in `Summary`.
-
-### Figure 5 Code Location
-
-Figure 5 and supplementary Figures S.5 and S.6 are produced by:
-
-1. [`experiments/compute_lur_metrics.py`](experiments/compute_lur_metrics.py)
-2. [`postprocess/merge_lur_results.py`](postprocess/merge_lur_results.py)
-3. [`paper_build/build_figures_figure5_s5_s6.py`](paper_build/build_figures_figure5_s5_s6.py)
-4. [`scripts/run_lur_figures.sh`](scripts/run_lur_figures.sh)
-
-In `full` mode, [`scripts/run_lur_figures.sh`](scripts/run_lur_figures.sh) recomputes the shipped article figures from deterministic 100-run seed plans. In `smoke` mode it falls back to a lighter sharded validation run.
-
-## Data Documentation
+## 3. Data Description
 
 ### Real City Networks
 
@@ -163,24 +76,15 @@ In `full` mode, [`scripts/run_lur_figures.sh`](scripts/run_lur_figures.sh) recom
 
 ### Synthetic Topologies
 
-The synthetic study uses `data/synthetic_topologies/synthetic_topologies_combined.xlsx`.
-This workbook contains the three Table S.7 scenarios only:
+The synthetic study uses `data/synthetic_topologies/synthetic_topologies_combined.xlsx`, generated by [`data/synthetic_topologies/build_synthetic_topologies.py`](data/synthetic_topologies/build_synthetic_topologies.py). The workbook contains the three Table S.7 scenarios only:
 
-| Manuscript label | Internal hard-edge count | Global alpha |
+| Workbook sheet name | Manuscript interpretation | Internal hard-edge count |
 |--------|--------|--------|
-| `zeta=1%` | `100` | `10%` |
-| `zeta=5%` | `500` | `10%` |
-| `zeta=10%` | `1000` | `10%` |
+| `synthetic_zeta1pct_alpha10` | `zeta=1%, alpha=10%` | `100` |
+| `synthetic_zeta5pct_alpha10` | `zeta=5%, alpha=10%` | `500` |
+| `synthetic_zeta10pct_alpha10` | `zeta=10%, alpha=10%` | `1000` |
 
-Current workbook sheet names follow the manuscript variables directly:
-
-| Workbook sheet name | Manuscript interpretation |
-|--------|--------|
-| `synthetic_zeta1pct_alpha10` | `zeta=1%, alpha=10%` |
-| `synthetic_zeta5pct_alpha10` | `zeta=5%, alpha=10%` |
-| `synthetic_zeta10pct_alpha10` | `zeta=10%, alpha=10%` |
-
-Each edge sheet contains the following variables:
+Each sheet contains the following variables:
 
 | Variable | Meaning |
 |--------|--------|
@@ -190,35 +94,6 @@ Each edge sheet contains the following variables:
 | `x_true` | Template edge coefficient used when defining the hard region; in the experiment runner, hard edges copy this value and non-hard edges are regenerated at runtime |
 | `is_hard` | Binary indicator for whether the edge belongs to the injected hard region |
 
-The workbook also contains a `manifest` sheet. Its variables are:
-
-| Variable | Meaning |
-|--------|--------|
-| `sheet` | Canonical sheet name for the synthetic case |
-| `scenario_label` | Human-readable manuscript label for the synthetic case |
-| `legacy_sheet` | Legacy sheet name kept for compatibility with older outputs |
-| `zeta` | Proportion of injected hard-region edges used to name the Table S.7 scenario |
-| `seed` | Random seed used when generating the stored topology workbook |
-| `target_ratio` | Target global asymmetry ratio used when generating the topology workbook; in the current manuscript workflow this is always `0.10` |
-| `alpha_merged` | Non-hard edge activation probability used for the merged topology during topology generation |
-| `alpha_raw` | Non-hard edge activation probability used for the raw topology during topology generation |
-| `left_hard_target` | Requested number of hard-region edges on the left-side chain |
-| `left_hard_real` | Actual number of hard-region edges realized after respecting structural limits |
-| `left_hard_backbone` | Number of hard-region backbone edges with nonzero coefficients |
-| `left_hard_backbone_max_depth` | Maximum backbone depth included in the hard region |
-| `left_hard_leaf_max_depth` | Maximum leaf depth included in the hard region |
-| `left_edges_total` | Total number of left-side edges in the synthetic tree |
-| `right_edges_merged` | Total number of right-side edges in the merged topology |
-| `right_edges_raw` | Total number of right-side edges in the raw topology |
-| `total_edges_merged` | Total number of edges in the merged topology |
-| `total_edges_raw` | Total number of edges in the raw topology |
-| `merged_leaves` | Number of leaves in the merged topology |
-| `raw_leaves` | Number of leaves in the raw topology |
-| `merged_nonzero` | Number of nonzero coefficients stored in the generated merged workbook template |
-| `raw_nonzero` | Number of nonzero coefficients stored in the generated raw workbook template |
-| `ratio_merged_actual` | `merged_nonzero / total_edges_merged` |
-| `ratio_raw_actual` | `raw_nonzero / total_edges_raw` |
-
 Important distinction:
 
 - The workbook `x_true` values define the hard-region template and topology metadata.
@@ -226,100 +101,31 @@ Important distinction:
   hard edges are fixed from the workbook and all non-hard edges are resampled so
   that the global asymmetry ratio remains `alpha=10%`.
 
-## Random Seeds
+## 4. Algorithm
 
-The shipped paper outputs are based on deterministic repeated runs.
+### Code Layout (`method/`)
 
-- Real-city table results are shipped as `100`-run canonical workbooks.
-- Final LUR figure results for `Figure 5`, `Figure S.5`, and `Figure S.6` are also shipped as `100`-run canonical workbooks.
-- Synthetic `Table S.7` uses `100` runs for each of the three synthetic scenarios.
-- Synthetic topology generation itself is fixed and deterministic.
-- Table and figure seed schedules are stored under `configs/seeds/` and are read automatically by the reproducibility scripts in full mode. TSLE, synthetic, and LUR figure launchers use base seed 42; other-method launchers use base seed 0. In full mode, explicit seed lists from the JSON files listed above define the exact shipped schedules, including final replacements or ordering.
+- [`tsle_methods.py`](method/tsle_methods.py)
+  - the manuscript's 4-step TSLE procedure (`tsle_step1_original` ... `tsle_step4_iterative`), SCAD estimation with Wasserstein-distance lambda selection, tree-based constraint augmentation, RREF reduction
+- [`lasso_mcp_l0_methods.py`](method/lasso_mcp_l0_methods.py)
+  - comparison methods: Lasso, L0, and MCP (solved through R `ncvreg` / `L0Learn` via rpy2)
+- [`tree_structure.py`](method/tree_structure.py)
+  - `Tree` class: BFS edge ordering, path merging, design matrix construction, LUR node classification helpers
+- [`evaluation_metrics.py`](method/evaluation_metrics.py), [`utils.py`](method/utils.py)
+  - evaluation metrics, data loading, synthetic data generation
+- [`tsle_experiment.py`](method/tsle_experiment.py), [`lasso_mcp_l0_experiment.py`](method/lasso_mcp_l0_experiment.py), [`synthetic_experiment.py`](method/synthetic_experiment.py), [`compute_lur_metrics.py`](method/compute_lur_metrics.py)
+  - experiment drivers (one per experiment family) called by the `scripts/` entrypoints
+- [`merge_results.py`](method/merge_results.py)
+  - merge experiment shards into the canonical workbooks under `results/raw/`
+- [`make_paper_results.py`](method/make_paper_results.py)
+  - generate every final paper table and figure from the canonical workbooks
 
-## Project Structure
+### 4-Step TSLE Procedure (primary contribution)
 
-```text
-jasa_minor/
-├── README.md
-├── requirements.txt
-├── configs/
-├── src/
-├── experiments/
-├── scripts/
-├── data/
-├── results/
-│   ├── main_scad/
-│   ├── other_methods/
-│   ├── synthetic/
-│   └── lur_figures/
-├── paper_outputs/
-│   ├── tables/readable/
-│   └── figures/
-│       └── readable/
-```
-
-## Core Scripts
-
-### experiments
-
-- [`scad_main_experiment.py`](experiments/scad_main_experiment.py)
-  - real-city SCAD 4-step experiments for Table 1 and Table S.6
-- [`other_methods_experiment.py`](experiments/other_methods_experiment.py)
-  - real-city L0 / Lasso / MCP experiments for Table S.2-S.5
-- [`synthetic_experiment.py`](experiments/synthetic_experiment.py)
-  - synthetic Table S.7 experiments
-- [`compute_lur_metrics.py`](experiments/compute_lur_metrics.py)
-  - compute per-seed LUR metrics for Figure 5, Figure S.5, Figure S.6
-
-### data/synthetic_topologies
-
-- [`build_synthetic_topologies.py`](data/synthetic_topologies/build_synthetic_topologies.py)
-  - generate the canonical `synthetic_topologies_combined.xlsx` workbook
-
-### postprocess
-
-- [`merge_table_results.py`](postprocess/merge_table_results.py)
-  - merge table experiment shards and aggregate canonical table result workbooks
-- [`merge_lur_results.py`](postprocess/merge_lur_results.py)
-  - merge LUR figure shard workbooks into canonical city workbooks
-
-### paper_build
-
-- [`build_tables_table1_s1_s7.py`](paper_build/build_tables_table1_s1_s7.py)
-  - generate the final readable outputs for Table 1 and Tables S.1-S.7
-- [`render_tables_readable.py`](paper_build/render_tables_readable.py)
-  - render publication-style PDF/XLSX/CSV tables
-- [`build_figures_figure5_s5_s6.py`](paper_build/build_figures_figure5_s5_s6.py)
-  - generate Figure 5, Figure S.5, Figure S.6, plus their plot-data files
-
-### configs/seeds
-
-- [`figures/city1_final.json`](configs/seeds/figures/city1_final.json)
-  - exact per-alpha seed list for the shipped Figure 5
-- [`figures/city2_final.json`](configs/seeds/figures/city2_final.json)
-  - exact per-alpha seed list for the shipped Figure S.5
-- [`figures/city3_final.json`](configs/seeds/figures/city3_final.json)
-  - exact per-alpha seed list for the shipped Figure S.6
-- [`tables_current.json`](configs/seeds/tables_current.json)
-  - current shipped table seed schedules for canonical outputs
-
-### scripts
-
-- [`run_paper_tables.sh`](scripts/run_paper_tables.sh)
-  - master table orchestrator
-- [`run_lur_figures.sh`](scripts/run_lur_figures.sh)
-  - master figure orchestrator
-- [`run_synthetic_experiments.sh`](scripts/run_synthetic_experiments.sh)
-  - optional tmux convenience launcher for quick synthetic runs; canonical Table S.7 reproduction uses `bash scripts/run_paper_tables.sh full synthetic`
-
-## Algorithm Details
-
-### 4-Step TSLE Procedure
-
-1. **Step 1: Original Matrix**
+1. **Step 1: TSLE on the original matrix**
    - Apply SCAD estimation on the original design matrix
    - Use Wasserstein distance for lambda selection
-2. **Step 2: Merged Matrix**
+2. **Step 2: TSLE on the merged matrix**
    - Apply path merging for dimension reduction
    - Compress linear paths to single edges
 3. **Step 3: TSLE-Random**
@@ -335,7 +141,7 @@ jasa_minor/
 - **High nodes**: restrictive edges based on tree structure
 - **Ultra-high nodes**: non-restrictive edges
 
-## Evaluation Metrics
+### Evaluation Metrics
 
 - **Accuracy**: `1 - (errors / total_coefficients)`
 - **Precision**: `TP / (TP + FP)`
@@ -343,50 +149,151 @@ jasa_minor/
 - **F0.5 Score**: `(1.25 * P * R) / (0.25 * P + R)`
 - **Coverage Accuracy**: accuracy on a selected coefficient subset
 
-## Configuration
-
-### Command Line Options
-
-**TSLE main experiment**
-
-```bash
-python experiments/scad_main_experiment.py \
-    --data DATA_FILE \
-    --sparsity RATIO \
-    --experiments N \
-    --save OUTPUT_FILE
-```
-
-**Synthetic experiment**
-
-```bash
-python experiments/synthetic_experiment.py \
-    --zeta 0.01 \
-    --ratio 0.10 \
-    --experiments N
-```
-
-**Other methods**
-
-```bash
-python experiments/other_methods_experiment.py \
-    --data DATA_FILE \
-    --method METHOD \
-    --experiments N \
-    --ratio SPARSITY \
-    --merge \
-    --seed SEED \
-    --save OUTPUT_FILE
-```
-
 ### Algorithm Parameters
 
 - Lambda selection: Wasserstein distance with 5-step convergence
 - SCAD penalty gamma: 3.7
 - Matrix reduction: BFS-based edge ordering with path merging
 
-## Requirements
+## 5. Reproducing the Results
 
-**System**: tested on Linux/WSL. Large experiments benefit from high-memory machines. No GPU is required. macOS may require GNU bash/coreutils and R setup adjustments because the shell scripts use Linux-oriented tools such as `flock`, `wait -n`, and optional `tmux`.
+### Reproduce a Single Table or Figure
 
-See [`requirements.txt`](requirements.txt) for the Python dependency list.
+Each paper output has its own entrypoint (default mode `full`; pass `smoke` for a quick validation run):
+
+```bash
+bash scripts/run_table1_s1.sh      # Table 1 + Table S.1
+bash scripts/run_tables_s2_s5.sh   # Tables S.2-S.5
+bash scripts/run_table_s6.sh       # Table S.6
+bash scripts/run_table_s7.sh       # Table S.7
+bash scripts/run_figure5.sh        # Figure 5
+bash scripts/run_figure_s5.sh      # Figure S.5
+bash scripts/run_figure_s6.sh      # Figure S.6
+```
+
+Each wrapper recomputes the raw experiments behind that output, then refreshes the rendered tables/figures. The figure wrappers re-render all three figures, using the shipped canonical workbooks for the cities that were not recomputed.
+
+### Reproduce All Results
+
+```bash
+bash scripts/run_all_tables.sh full all
+bash scripts/run_all_figures.sh full
+```
+
+The repository also ships canonical `results/raw/` workbooks and rendered `results/tables/`, `results/figures/` files. Rebuilding outputs from those workbooks reproduces the submitted tables and figures exactly. Full experimental recomputation is deterministic under the tested software stack above, but R package, BLAS, and platform differences can cause small numerical differences.
+
+### Export-only rebuilds (minutes, < 8 GB RAM)
+
+These commands read the shipped canonical workbooks under `results/raw/` and regenerate `results/tables/` and `results/figures/`:
+
+```bash
+conda run -n jasa python -u method/make_paper_results.py            # all tables + all figures
+conda run -n jasa python -u method/make_paper_results.py --tables   # tables only
+conda run -n jasa python -u method/make_paper_results.py --figures  # figures only
+```
+
+Important distinction:
+
+- The `method/make_paper_results.py` commands above are **render-only**.
+- The shell orchestrators in `scripts/` are **experiment runners**. They recompute results and then refresh the publication outputs. For example, `bash scripts/run_all_tables.sh full synthetic` reruns the three synthetic scenarios before rebuilding `Table S.7`.
+- `method/make_paper_results.py` fails fast when expected table entries are missing; pass `--allow-missing` only for diagnostic rendering.
+
+### Full experimental recomputation
+
+The estimates below refer to **clean experimental reruns** on a large-memory Linux server, not guarantees.
+
+| Workflow | Parallel run | Serial run | Observed memory profile |
+|---|---:|---:|---:|
+| `bash scripts/run_table1_s1.sh` | ~6-24 hours | often >1 day | `city3` TSLE jobs can reach ~140-180 GB RSS |
+| `bash scripts/run_tables_s2_s5.sh` | ~8-24 hours | often >1 day | heavy `city3` jobs can transiently reach ~260 GB RSS |
+| `bash scripts/run_table_s7.sh` | ~1-4 hours | ~4-8 hours | usually <32 GB RAM |
+| `bash scripts/run_figure5.sh` (per figure) | ~4-12 hours | often >1 day | `city3` LUR can reach ~150-165 GB RSS |
+
+Recommended planning numbers:
+
+- **Reviewer-facing rebuild only**: 1 CPU core, 8 GB RAM is enough.
+- **Full table or figure rerun**: start with **>= 256 GB RAM** and multiple cores.
+- **Running full tables and full figures at the same time**: only do this on a machine in the **>1 TB RAM** class.
+
+### Parallelism and checkpointing
+
+- `scripts/run_all_tables.sh` uses top-level task parallelism via `MAX_JOBS`.
+- `scripts/run_all_figures.sh` runs the three city figure jobs in parallel in `full` mode.
+- The long-running experimental drivers (`tsle_experiment.py`, `lasso_mcp_l0_experiment.py`, `compute_lur_metrics.py`) all support checkpoint/resume at seed granularity; the shell entrypoints enable `--resume --checkpoint-interval 1`. If a long run is interrupted, restarting the same command resumes from the last checkpoint.
+- On shared machines, start with a lower `MAX_JOBS` and scale up after checking memory and I/O behavior. `city3` is the dominant cost driver.
+- The full-table orchestrator allows incomplete intermediate table renders while experiments are still running, then performs a strict final rebuild after all table experiments finish. For experiment-only subset runs, set `SKIP_REFRESH_TABLES=1`.
+
+### Random Seeds
+
+The shipped paper outputs are based on deterministic repeated runs (100 seeds per configuration):
+
+- Seed schedules are stored under `configs/seeds/` and read automatically by the scripts in full mode; explicit seed lists in the JSON files define the exact shipped schedules.
+- TSLE, synthetic, and LUR figure launchers use base seed 42; other-method launchers use base seed 0. Step 3 random augmentation uses fixed seed 42.
+- Synthetic topology generation itself is fixed and deterministic.
+- [`configs/seeds/tables_current.json`](configs/seeds/tables_current.json): table seed schedules; [`configs/seeds/figures/city{1,2,3}_final.json`](configs/seeds/figures/): per-alpha seed lists for Figure 5, S.5, S.6.
+
+### Experiment driver CLIs
+
+```bash
+# TSLE main experiment (Table 1, Table S.6)
+python method/tsle_experiment.py \
+    --data DATA_FILE --sparsity RATIO --experiments N --save OUTPUT_FILE
+
+# Synthetic experiment (Table S.7)
+python method/synthetic_experiment.py \
+    --zeta 0.01 --ratio 0.10 --experiments N
+
+# Lasso / L0 / MCP comparison methods (Tables S.2-S.5)
+python method/lasso_mcp_l0_experiment.py \
+    --data DATA_FILE --method METHOD --experiments N --ratio SPARSITY \
+    --merge --seed SEED --save OUTPUT_FILE
+
+# LUR metrics (Figure 5, S.5, S.6)
+python method/compute_lur_metrics.py \
+    --data DATA_FILE --experiments N --save OUTPUT_FILE
+```
+
+## 6. Results
+
+### Paper Output Mapping
+
+Subset commands assume the shipped canonical workbooks for the other tables remain present. If those workbooks were removed and only one subset should be recomputed, use `SKIP_REFRESH_TABLES=1` and rebuild the final tables after all required result workbooks are restored.
+
+| Paper Output | Command | Input Data | Result File | Run Plan |
+|---|---|---|---|---|
+| Table 1 (TSLE, r=1%,5%,10%) | `bash scripts/run_table1_s1.sh` | `data/city{1,2,3}.xlsx` | `results/raw/main_scad/scad_city{N}_ratio{R}.xlsx` → `results/tables/table1.*` | 100 seeds; base seed 42; schedule: `configs/seeds/tables_current.json` → `tables.scad_main` |
+| Table S.1 (tree structure summary) | `bash scripts/run_table1_s1.sh` | `data/city{1,2,3}.xlsx` | `results/tables/table_s1.*` | No random seed; deterministic topology summary |
+| Tables S.2-S.3 (other methods, original) | `bash scripts/run_tables_s2_s5.sh` | `data/city{1,2,3}.xlsx` | `results/raw/other_methods/othermethods_original_city{N}_ratio{R}.xlsx` → `results/tables/table_s{2,3}.*` | 100 seeds; base seed 0; schedule: `tables.other_methods_original` |
+| Tables S.4-S.5 (other methods, merged) | `bash scripts/run_tables_s2_s5.sh` | `data/city{1,2,3}.xlsx` | `results/raw/other_methods/othermethods_merged_city{N}_ratio{R}.xlsx` → `results/tables/table_s{4,5}.*` | 100 seeds; base seed 0; schedule: `tables.other_methods_merged` |
+| Table S.6 (TSLE, r=15%,20%,30%) | `bash scripts/run_table_s6.sh` | `data/city{1,2,3}.xlsx` | `results/raw/main_scad/scad_city{N}_ratio{R}.xlsx` → `results/tables/table_s6.*` | 100 seeds; base seed 42; schedule: `tables.scad_main` |
+| Table S.7 (synthetic) | `bash scripts/run_table_s7.sh` | `data/synthetic_topologies/synthetic_topologies_combined.xlsx` | `results/raw/synthetic/synthetic_zeta{1pct,5pct,10pct}_alpha10.xlsx` → `results/tables/table_s7.*` | 100 seeds; base seed 42; schedule: `tables.synthetic_s7` |
+| Figure 5 (City 1 LUR) | `bash scripts/run_figure5.sh` | `data/city1.xlsx` | `results/raw/lur_figures/lur_city1_metrics.xlsx` → `results/figures/figure5_city1.pdf` | 100 seeds; base seed 42; schedule: `configs/seeds/figures/city1_final.json` |
+| Figure S.5 (City 2 LUR) | `bash scripts/run_figure_s5.sh` | `data/city2.xlsx` | `results/raw/lur_figures/lur_city2_metrics.xlsx` → `results/figures/figure_s5_city2.pdf` | 100 seeds; base seed 42; schedule: `configs/seeds/figures/city2_final.json` |
+| Figure S.6 (City 3 LUR) | `bash scripts/run_figure_s6.sh` | `data/city3.xlsx` | `results/raw/lur_figures/lur_city3_metrics.xlsx` → `results/figures/figure_s6_city3.pdf` | 100 seeds; base seed 42; schedule: `configs/seeds/figures/city3_final.json` |
+
+### How to Find Table 1 Numbers in Result Files
+
+Each TSLE result workbook (for example [`results/raw/main_scad/scad_city1_ratio0.01.xlsx`](results/raw/main_scad/scad_city1_ratio0.01.xlsx)) contains:
+
+- `Summary`: mean and standard deviation for Accuracy, Precision, Recall, and F0.5 by TSLE step
+- `Metadata`: run configuration, including `base_seed`, `experiment_count`, sparsity ratio, and paper tag
+- `Individual_Results`: per-experiment metrics with seed numbers
+- `Seed_Status`: checkpoint/resume status for completed seeds, when present
+
+Table 1 values correspond to the `*_mean` columns in `Summary`.
+
+### Figure Pipeline
+
+Figure 5 and supplementary Figures S.5 / S.6 are produced by:
+
+1. [`method/compute_lur_metrics.py`](method/compute_lur_metrics.py) — per-seed LUR metrics
+2. [`method/merge_results.py`](method/merge_results.py) — merge shard workbooks into canonical city workbooks
+3. [`method/make_paper_results.py`](method/make_paper_results.py) — render figures + plot-data files
+4. [`scripts/run_all_figures.sh`](scripts/run_all_figures.sh) — orchestrator (`full` mode recomputes from the deterministic 100-run seed plans; `smoke` mode is a lighter sharded validation run)
+
+### Table Pipeline
+
+1. `method/{tsle,lasso_mcp_l0,synthetic}_experiment.py` — run experiments, write `results/raw/` workbooks
+2. [`method/merge_results.py`](method/merge_results.py) — merge experiment shards into canonical workbooks
+3. [`method/make_paper_results.py`](method/make_paper_results.py) — render the final `results/tables/`
+4. [`scripts/run_all_tables.sh`](scripts/run_all_tables.sh) — orchestrator

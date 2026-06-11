@@ -42,11 +42,13 @@ logs/
 archive/
 Manuscript_Minor_Revision/
 results/logs/
-results/*/shards/
+results/raw/*/shards/
+results/raw/synthetic/table_s7_combined.xlsx
 
-# Manuscript and review PDFs (paper outputs stay tracked)
+# Manuscript and review PDFs (final paper tables/figures stay tracked)
 *.pdf
-!paper_outputs/**/*.pdf
+!results/tables/*.pdf
+!results/figures/*.pdf
 
 # Reproducibility archive
 archive/

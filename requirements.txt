@@ -12,15 +12,23 @@ openpyxl==3.1.2
 # R integration (rpy2>=3.6 has numpy compatibility issues)
 rpy2==3.5.11
 
-# Visualization (optional)
+# Visualization (figure rendering)
 matplotlib==3.7.1
-seaborn==0.12.2
 
 # ===========================================
 # R Environment (required)
 # ===========================================
-# R version: 4.3.3
+# The recorded full-recomputation stack (final reruns, Ubuntu 22.04, x86_64):
+#   R 4.3.3 (conda-forge build, x86_64-conda-linux-gnu)
+#   BLAS/LAPACK: conda OpenBLAS 0.3.30; LAPACK 3.12.0
+#   ncvreg 3.16.0
+#   L0Learn 2.1.0
 #
-# Install R packages in R console:
-#   install.packages("ncvreg")   # tested: 3.16.0
-#   install.packages("L0Learn")  # tested: 2.1.0
+# Install R into the conda env, then pin the tested package versions:
+#   conda install -c conda-forge r-base=4.3.3
+#   Rscript -e "install.packages('remotes', repos='https://cloud.r-project.org')"
+#   Rscript -e "remotes::install_version('ncvreg', '3.16.0', repos='https://cloud.r-project.org')"
+#   Rscript -e "remotes::install_version('L0Learn', '2.1.0', repos='https://cloud.r-project.org')"
+#
+# Newer CRAN releases or a different BLAS may cause small numerical
+# differences in full experimental reruns.
