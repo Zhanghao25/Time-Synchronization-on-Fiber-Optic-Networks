@@ -69,9 +69,9 @@ The simulation study in Table S.7 in Section E of the Supplementary Materials us
 
 | Workbook sheet name | Parameter settings |
 |--------|--------|
-| `synthetic_zeta1pct_alpha10` | $\zeta = 1\%, \alpha = 10\%$ |
-| `synthetic_zeta5pct_alpha10` | $\zeta = 5\%, \alpha = 10\%$ |
-| `synthetic_zeta10pct_alpha10` | $\zeta = 10\%, \alpha = 10\%$ |
+| `synthetic_zeta1pct_alpha10` | ζ = 1%, α = 10% |
+| `synthetic_zeta5pct_alpha10` | ζ = 5%, α = 10% |
+| `synthetic_zeta10pct_alpha10` | ζ = 10%, α = 10% |
 
 Each of the three sheets stores an edge-level description of the corresponding synthetic network. The variables in these sheets are defined as follows:
 
