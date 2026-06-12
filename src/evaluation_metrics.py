@@ -129,6 +129,42 @@ class Evaluator:
             "true_negatives": true_negatives
         }
     
+    def evaluate_f05_score(self, predictions: np.ndarray,
+                           predicted_nonzero_indices: List[int]) -> Dict[str, float]:
+        """
+        Calculate F0.5 score emphasizing precision over recall.
+
+        Returns the core sparsity-pattern metrics (precision, recall, F0.5,
+        and confusion matrix counts) used by the TSLE result workbooks.
+        """
+        sparsity = self.evaluate_sparsity_pattern(predictions, predicted_nonzero_indices)
+        return {
+            "precision": sparsity["precision"],
+            "recall": sparsity["recall"],
+            "f05_score": sparsity["f05_score"],
+            "true_positives": sparsity["true_positives"],
+            "false_positives": sparsity["false_positives"],
+            "false_negatives": sparsity["false_negatives"],
+        }
+
+    def evaluate_all_metrics(self, predictions: np.ndarray,
+                             predicted_nonzero_indices: List[int]) -> Dict[str, Any]:
+        """
+        Evaluate accuracy and sparsity-pattern metrics at once.
+
+        Result keys ("accuracy", "error_locations", "n_errors", precision/recall/F0.5
+        and confusion counts) match the columns of the shipped result workbooks.
+        """
+        accuracy_metrics = self.evaluate_accuracy(predictions)
+        f05_metrics = self.evaluate_f05_score(predictions, predicted_nonzero_indices)
+
+        return {
+            "accuracy": accuracy_metrics["accuracy"],
+            "error_locations": accuracy_metrics["error_locations"],
+            "n_errors": accuracy_metrics["error_count"],
+            **f05_metrics,
+        }
+
     def evaluate_coverage(self, predictions: np.ndarray, 
                          selected_indices: List[int]) -> Dict[str, Union[float, List[int]]]:
         """

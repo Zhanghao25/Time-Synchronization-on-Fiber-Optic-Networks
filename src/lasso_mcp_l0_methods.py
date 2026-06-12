@@ -5,9 +5,8 @@ Baseline regularization methods: Lasso (L1), L0, and MCP.
 These are the comparison methods reported in Tables S.2-S.5. All three are
 solved through R backends via rpy2:
 
-- Lasso (L1) with traditional path selection (ncvreg)
-- L0 regularization with coordinate descent, last lambda (L0Learn)
-- MCP with Wasserstein distance lambda selection, same scheme as SCAD (ncvreg)
+- Lasso (L1), L0, and MCP regularization baselines
+- Wasserstein-based hyperparameter selection workflow
 """
 
 import numpy as np

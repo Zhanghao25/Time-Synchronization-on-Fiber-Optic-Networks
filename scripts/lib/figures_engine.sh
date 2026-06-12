@@ -12,7 +12,7 @@ set -euo pipefail
 #   to reproduce the shipped Figure 5 / Figure S.5 / Figure S.6 exactly
 # =============================================================================
 
-WORKDIR="$(cd "$(dirname "$0")/.." && pwd)"
+WORKDIR="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$WORKDIR"
 
 MODE="${1:-full}"
@@ -54,7 +54,7 @@ run_job() {
   local log_path="${LOG_DIR}/${shard_name}.log"
 
   echo "[launch] ${shard_name} -> ${save_path}"
-  conda run -n "${CONDA_ENV}" python -u method/compute_lur_metrics.py \
+  conda run -n "${CONDA_ENV}" python -u src/compute_lur_metrics.py \
     --data "${dataset}" \
     --city-label "${city_label}" \
     --alphas "${ALPHAS}" \
@@ -75,7 +75,7 @@ run_manifest_job() {
   local log_path="${LOG_DIR}/${city_tag}.log"
 
   echo "[launch] ${city_tag} manifest=${manifest} -> ${save_path}"
-  conda run -n "${CONDA_ENV}" python -u method/compute_lur_metrics.py \
+  conda run -n "${CONDA_ENV}" python -u src/compute_lur_metrics.py \
     --data "${dataset}" \
     --city-label "${city_label}" \
     --alphas "${ALPHAS}" \
@@ -139,14 +139,14 @@ else
 
   echo "[merge] merging city shard workbooks"
   for c in $CITIES; do
-    conda run -n "${CONDA_ENV}" python -u method/merge_results.py --lur \
+    conda run -n "${CONDA_ENV}" python -u src/merge_results.py --lur \
       --inputs "${SHARD_DIR}"/city${c}_shard*.xlsx \
       --save "${RESULTS_DIR}/lur_city${c}_metrics.xlsx"
   done
 fi
 
 echo "[figure] building canonical readable figures"
-conda run -n "${CONDA_ENV}" python -u method/make_paper_results.py --figures \
+conda run -n "${CONDA_ENV}" python -u src/make_paper_results.py --figures \
   --metrics-dir "${RESULTS_DIR}"
 
 echo "[done] outputs in ${OUTPUT_DIR}"

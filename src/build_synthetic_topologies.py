@@ -9,14 +9,14 @@ Design:
   - Expand 2000 leaf edges into 2-edge chains for raw (11000 edges)
   - This ensures Merge(Raw) == Merged and same leaf count
 - Output edges in BFS order so Tree class edge ordering matches
-- Add 'is_hard' column for direct hard-edge identification
+- Add 'is_selected' column marking edges in selected local configurations
 
 Outputs:
   combined: synthetic_topologies_combined.xlsx
     - 3 raw edge sheets
 
 Usage:
-  python data/synthetic_topologies/build_synthetic_topologies.py [--out_dir DIR]
+  python src/build_synthetic_topologies.py [--out_dir DIR]
 """
 
 import argparse
@@ -346,20 +346,20 @@ def graph_to_bfs_dataframe(G: nx.DiGraph, source: str,
                            hard_edges: set) -> pd.DataFrame:
     """
     Convert DiGraph to DataFrame with edges in BFS order.
-    Adds is_hard column based on hard_edges set.
+    Adds is_selected column based on hard_edges set.
     """
     bfs_edges = list(nx.bfs_edges(G, source=source))
 
     rows = []
     for i, (parent, child) in enumerate(bfs_edges):
         x_true = G.edges[parent, child].get('x_true', 0.0)
-        is_hard = 1 if (parent, child) in hard_edges else 0
+        is_selected = 1 if (parent, child) in hard_edges else 0
         rows.append({
             'edge_id': i,
             'parent_label': parent,
             'child_label': child,
             'x_true': x_true,
-            'is_hard': is_hard,
+            'is_selected': is_selected,
         })
 
     return pd.DataFrame(rows)
@@ -371,7 +371,7 @@ def graph_to_bfs_dataframe(G: nx.DiGraph, source: str,
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--out_dir", type=str,
-                        default=".")
+                        default="../data/synthetic_topologies")
     args = parser.parse_args()
 
     out_dir = (Path(__file__).resolve().parent / args.out_dir).resolve()

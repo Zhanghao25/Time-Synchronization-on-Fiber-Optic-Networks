@@ -31,7 +31,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from tsle_methods import tsle_step2_merged
 from tree_structure import Tree
-from utils import Evaluator, generate_synthetic_data, load_network_data
+from utils import generate_synthetic_data, load_network_data
+from evaluation_metrics import Evaluator
 
 
 ROOT = Path(__file__).resolve().parents[1]

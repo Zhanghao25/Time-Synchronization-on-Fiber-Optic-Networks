@@ -8,10 +8,10 @@ Handles:
 3. Other Methods results (results/raw/other_methods/)
 
 Usage:
-    python method/merge_results.py
-    python method/merge_results.py --synthetic  # Only merge synthetic results
-    python method/merge_results.py --scad       # Only merge SCAD results
-    python method/merge_results.py --other      # Only merge Other Methods results
+    python src/merge_results.py
+    python src/merge_results.py --synthetic  # Only merge synthetic results
+    python src/merge_results.py --scad       # Only merge SCAD results
+    python src/merge_results.py --other      # Only merge Other Methods results
 """
 
 import argparse

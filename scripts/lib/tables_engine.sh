@@ -9,7 +9,7 @@ set -euo pipefail
 # Step 3 random augmentation: fixed seed=42
 # =============================================================================
 
-WORKDIR="$(cd "$(dirname "$0")/.." && pwd)"
+WORKDIR="$(cd "$(dirname "$0")/../.." && pwd)"
 CONDA_ENV="${CONDA_ENV:-jasa}"
 MODE="${1:-smoke}"
 TARGET="${2:-all}"
@@ -82,7 +82,7 @@ refresh_tables() {
     echo "Refreshing readable table outputs..."
   fi
   mkdir -p /tmp
-  flock -x /tmp/jasa_refresh_tables.lock -c "conda run -n '$CONDA_ENV' python -u method/make_paper_results.py --tables${allow_arg}"
+  flock -x /tmp/jasa_refresh_tables.lock -c "conda run -n '$CONDA_ENV' python -u src/make_paper_results.py --tables${allow_arg}"
 }
 
 export_tex_if_requested() {
@@ -92,7 +92,7 @@ export_tex_if_requested() {
 
   echo
   echo "Exporting combined TeX summary..."
-  conda run -n "$CONDA_ENV" python -u method/make_paper_results.py --tables --export-tex
+  conda run -n "$CONDA_ENV" python -u src/make_paper_results.py --tables --export-tex
 }
 
 experiments_for_city() {
@@ -242,7 +242,7 @@ finish_stage() {
   if [[ -d "results/raw/main_scad/shards/${PAPER_TAG}" ]]; then
     echo
     echo "Merging SCAD shard outputs for ${stage_name}..."
-    conda run -n "$CONDA_ENV" python -u method/merge_results.py --merge-shards scad \
+    conda run -n "$CONDA_ENV" python -u src/merge_results.py --merge-shards scad \
       --shard-dir "results/raw/main_scad/shards/${PAPER_TAG}" \
       --output-dir "results/raw/main_scad"
   fi
@@ -250,7 +250,7 @@ finish_stage() {
   if [[ -d "results/raw/other_methods/shards/${PAPER_TAG}" ]]; then
     echo
     echo "Merging other-method shard outputs for ${stage_name}..."
-    conda run -n "$CONDA_ENV" python -u method/merge_results.py --merge-shards other \
+    conda run -n "$CONDA_ENV" python -u src/merge_results.py --merge-shards other \
       --shard-dir "results/raw/other_methods/shards/${PAPER_TAG}" \
       --output-dir "results/raw/other_methods"
   fi
@@ -258,7 +258,7 @@ finish_stage() {
   if [[ -d "results/raw/synthetic/shards/${PAPER_TAG}" ]]; then
     echo
     echo "Merging synthetic shard outputs for ${stage_name}..."
-    conda run -n "$CONDA_ENV" python -u method/merge_results.py --merge-shards synthetic \
+    conda run -n "$CONDA_ENV" python -u src/merge_results.py --merge-shards synthetic \
       --shard-dir "results/raw/synthetic/shards/${PAPER_TAG}" \
       --output-dir "results/raw/synthetic"
   fi
@@ -289,7 +289,7 @@ submit_scad_case() {
 
   local task_name="scad_c${city}_r${ratio}"
   local outfile="results/raw/main_scad/scad_city${city}_ratio${ratio}.xlsx"
-  local cmd="conda run -n ${CONDA_ENV} python -u method/tsle_experiment.py \
+  local cmd="conda run -n ${CONDA_ENV} python -u src/tsle_experiment.py \
     --data data/city${city}.xlsx \
     --experiments ${n_exp} \
     --sparsity ${ratio} \
@@ -333,7 +333,7 @@ submit_other_case() {
     seed_flag="--seed-values '${seeds}'"
   fi
 
-  local cmd="${env_prefix} conda run -n ${CONDA_ENV} python -u method/lasso_mcp_l0_experiment.py \
+  local cmd="${env_prefix} conda run -n ${CONDA_ENV} python -u src/lasso_mcp_l0_experiment.py \
     --data data/city${city}.xlsx \
     --experiments ${n_exp} \
     --ratio ${ratio} \
@@ -372,7 +372,7 @@ submit_synthetic_case() {
     seed_flag="--seed-values '${seeds}'"
   fi
 
-  local cmd="conda run -n ${CONDA_ENV} python -u method/synthetic_experiment.py \
+  local cmd="conda run -n ${CONDA_ENV} python -u src/synthetic_experiment.py \
     --zeta ${zeta} \
     --ratio ${ratio} \
     --experiments ${n_exp} \
@@ -405,6 +405,21 @@ run_table_s6() {
     done
   done
   finish_stage "Table S.6" "$failed_before"
+}
+
+run_other_subset() {
+  local matrix_type="$1"; shift
+  local stage_name="$1"; shift
+  local failed_before=${#FAILED_TASKS[@]}
+  echo
+  echo "Submitting ${stage_name} batch (${matrix_type})..."
+  local city ratio
+  for city in $CITIES; do
+    for ratio in "$@"; do
+      submit_other_case "$matrix_type" "$city" "$ratio"
+    done
+  done
+  finish_stage "$stage_name" "$failed_before"
 }
 
 run_other_tables() {
@@ -472,6 +487,21 @@ case "$TARGET" in
   table1)
     run_table1
     ;;
+  table_s1)
+    # Table S.1 is a deterministic topology summary; rendering only.
+    ;;
+  table_s2)
+    run_other_subset original "Table S.2" 0.01 0.05 0.10
+    ;;
+  table_s3)
+    run_other_subset original "Table S.3" 0.15 0.20 0.30
+    ;;
+  table_s4)
+    run_other_subset merged "Table S.4" 0.01 0.05 0.10
+    ;;
+  table_s5)
+    run_other_subset merged "Table S.5" 0.15 0.20 0.30
+    ;;
   table_s6)
     run_table_s6
     ;;
@@ -495,7 +525,7 @@ case "$TARGET" in
     ;;
   *)
     echo "Unknown target: $TARGET"
-    echo "Usage: bash scripts/run_all_tables.sh [smoke|full] [table1|table_s6|scad_tables|other_methods|supp_tables|synthetic|all]"
+    echo "Usage: bash scripts/lib/tables_engine.sh [smoke|full] [table1|table_s1|table_s2|table_s3|table_s4|table_s5|table_s6|scad_tables|other_methods|supp_tables|synthetic|all]"
     exit 1
     ;;
 esac

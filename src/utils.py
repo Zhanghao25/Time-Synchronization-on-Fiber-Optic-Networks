@@ -2,8 +2,8 @@
 """
 Utility Functions for Hierarchical Network Regression
 
-Contains data loading, synthetic data generation, evaluation metrics,
-and result saving utilities.
+Contains data loading and synthetic time delay data generation utilities.
+Evaluation metrics live in evaluation_metrics.Evaluator.
 """
 
 import numpy as np
@@ -124,75 +124,3 @@ def generate_synthetic_data(A: np.ndarray, ratio: float, seed: int,
     b = A @ x + np.random.normal(loc=0, scale=observation_noise_scale, size=A.shape[0])
     
     return x, x_raw, b, non_zero_indices
-
-
-class Evaluator:
-    """Evaluation framework for regression performance assessment."""
-    
-    def __init__(self, ground_truth: np.ndarray, true_nonzero_indices: List[int], 
-                 threshold: float = 500.0) -> None:
-        """Initialize evaluator with ground truth data."""
-        self.ground_truth = ground_truth.copy()
-        self.threshold = threshold
-        self.true_nonzero_indices = set(true_nonzero_indices)
-        
-        # Validate inputs
-        if len(ground_truth) == 0:
-            raise ValueError("Ground truth vector cannot be empty")
-        
-        if not all(0 <= idx < len(ground_truth) for idx in true_nonzero_indices):
-            raise ValueError("Invalid indices in true_nonzero_indices")
-    
-    def evaluate_accuracy(self, predictions: np.ndarray) -> Dict[str, Any]:
-        """Evaluate prediction accuracy based on absolute error threshold."""
-        if len(predictions) != len(self.ground_truth):
-            raise ValueError("Predictions and ground truth must have same length")
-        
-        absolute_errors = np.abs(predictions - self.ground_truth)
-        error_locations = np.where(absolute_errors > self.threshold)[0].tolist()
-        accuracy = 1.0 - len(error_locations) / len(self.ground_truth)
-        
-        return {
-            "accuracy": accuracy,
-            "error_locations": error_locations,
-            "n_errors": len(error_locations)
-        }
-    
-    def evaluate_f05_score(self, predictions: np.ndarray, 
-                          predicted_nonzero_indices: List[int]) -> Dict[str, float]:
-        """Calculate F0.5 score emphasizing precision over recall."""
-        predicted_nonzero_set = set(predicted_nonzero_indices)
-        
-        # Compute confusion matrix elements
-        true_positives = len(self.true_nonzero_indices & predicted_nonzero_set)
-        false_positives = len(predicted_nonzero_set - self.true_nonzero_indices)
-        false_negatives = len(self.true_nonzero_indices - predicted_nonzero_set)
-        
-        # Calculate precision and recall with safe division
-        precision = (true_positives / (true_positives + false_positives) 
-                    if (true_positives + false_positives) > 0 else 0.0)
-        recall = (true_positives / (true_positives + false_negatives) 
-                 if (true_positives + false_negatives) > 0 else 0.0)
-        
-        # Calculate F0.5 score (β = 0.5, emphasizes precision)
-        beta = 0.5
-        denominator = beta**2 * precision + recall
-        f05_score = ((1 + beta**2) * precision * recall / denominator 
-                    if denominator > 0 else 0.0)
-        
-        return {
-            "precision": precision,
-            "recall": recall,
-            "f05_score": f05_score,
-            "true_positives": true_positives,
-            "false_positives": false_positives,
-            "false_negatives": false_negatives
-        }
-    
-    def evaluate_all_metrics(self, predictions: np.ndarray, 
-                           predicted_nonzero_indices: List[int]) -> Dict[str, Any]:
-        """Evaluate all metrics at once."""
-        accuracy_metrics = self.evaluate_accuracy(predictions)
-        f05_metrics = self.evaluate_f05_score(predictions, predicted_nonzero_indices)
-        
-        return {**accuracy_metrics, **f05_metrics}

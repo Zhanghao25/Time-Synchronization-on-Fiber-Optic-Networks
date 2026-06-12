@@ -4,11 +4,11 @@ Synthetic Topology Experiment for SCAD Methods
 
 Uses synthetic topology data with:
 - BFS-ordered edges (matching Tree class)
-- is_hard column for direct hard-edge identification
+- is_selected column for direct hard-edge identification
 - 7000 leaves (A matrix ~7000 x n_edges)
 
 Usage:
-    python method/synthetic_experiment.py --zeta 0.01 --ratio 0.10 --experiments 10
+    python src/synthetic_experiment.py --zeta 0.01 --ratio 0.10 --experiments 10
 """
 
 import numpy as np
@@ -30,7 +30,7 @@ from tsle_methods import (
     tsle_step4_iterative
 )
 from tree_structure import Tree
-from utils import Evaluator
+from evaluation_metrics import Evaluator
 
 warnings.filterwarnings("ignore")
 
@@ -59,7 +59,7 @@ ZETA_TO_CASE = {case["zeta"]: case for case in CASES}
 
 
 # ═══════════════════════════════════════
-# Data loading (simplified: uses is_hard column)
+# Data loading (simplified: uses is_selected column)
 # ═══════════════════════════════════════
 def get_case_sheet_name(case: Dict, ratio: float) -> str:
     """Return the canonical sheet/file stem for a synthetic case."""
@@ -107,7 +107,7 @@ def build_tree_dataframe(tree: Tree, hard_edges: set) -> pd.DataFrame:
             'parent_label': parent,
             'child_label': child,
             'x_true': edge_values.get((parent, child), 0.0),
-            'is_hard': 1 if (parent, child) in hard_edges else 0,
+            'is_selected': 1 if (parent, child) in hard_edges else 0,
         })
     return pd.DataFrame(rows)
 
@@ -121,7 +121,7 @@ def reconstruct_merged_df_from_raw(df_raw: pd.DataFrame) -> pd.DataFrame:
     so running `Tree(..., merge=True)` reproduces the merged topology and edge
     coefficients needed by the synthetic experiment.
     """
-    required_cols = {'parent_label', 'child_label', 'x_true', 'is_hard'}
+    required_cols = {'parent_label', 'child_label', 'x_true', 'is_selected'}
     missing = required_cols - set(df_raw.columns)
     if missing:
         raise ValueError(f"Raw synthetic sheet missing required columns: {sorted(missing)}")
@@ -132,7 +132,7 @@ def reconstruct_merged_df_from_raw(df_raw: pd.DataFrame) -> pd.DataFrame:
         parent = row['parent_label']
         child = row['child_label']
         graph.add_edge(parent, child, value=row['x_true'])
-        if int(row['is_hard']) == 1:
+        if int(row['is_selected']) == 1:
             hard_edges.add((parent, child))
 
     source_candidates = set(df_raw['parent_label']) - set(df_raw['child_label'])
@@ -170,13 +170,13 @@ def load_case_data(case: Dict, ratio: float, matrix_type: str,
         df = raw_df
         source_kind = "combined_workbook"
 
-    assert 'is_hard' in df.columns, "Missing is_hard column. Use v3 data."
+    assert 'is_selected' in df.columns, "Missing is_selected column in the topology workbook."
 
     meta = {
         "filepath": str(workbook_path),
         "source_kind": source_kind or "unknown",
         "n_edges": len(df),
-        "n_hard": int(df['is_hard'].sum()),
+        "n_hard": int(df['is_selected'].sum()),
         "matched_name": matched_sheet or "",
     }
     return df, meta
@@ -214,24 +214,24 @@ def generate_hybrid_x_true(A: np.ndarray, df: pd.DataFrame,
     """
     Generate x_true: hard edges from excel, non-hard edges randomized.
 
-    Since BFS order matches, df['x_true'] and df['is_hard'] align with Tree edges.
+    Since BFS order matches, df['x_true'] and df['is_selected'] align with Tree edges.
     """
     np.random.seed(seed)
     n_edges = len(df)
 
-    is_hard = df['is_hard'].values.astype(bool)
+    is_selected = df['is_selected'].values.astype(bool)
     x_excel = df['x_true'].values
 
     x_clean = np.zeros(n_edges)
 
     # Hard edges: use excel values
-    x_clean[is_hard] = x_excel[is_hard]
+    x_clean[is_selected] = x_excel[is_selected]
 
     # Count hard nonzero (BACKBONE hard edges have nonzero values)
-    n_hard_nonzero = int(np.sum((is_hard) & (np.abs(x_excel) > 1e-12)))
+    n_hard_nonzero = int(np.sum((is_selected) & (np.abs(x_excel) > 1e-12)))
 
     # Non-hard edges: randomly select and generate
-    nonhard_idx = np.where(~is_hard)[0]
+    nonhard_idx = np.where(~is_selected)[0]
     target_total_nz = int(n_edges * target_ratio)
     needed_nz = max(0, target_total_nz - n_hard_nonzero)
 

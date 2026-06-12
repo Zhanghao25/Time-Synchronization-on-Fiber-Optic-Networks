@@ -45,10 +45,8 @@ results/logs/
 results/raw/*/shards/
 results/raw/synthetic/table_s7_combined.xlsx
 
-# Manuscript and review PDFs (final paper tables/figures stay tracked)
+# Manuscript and review PDFs (no PDFs are tracked)
 *.pdf
-!results/tables/*.pdf
-!results/figures/*.pdf
 
 # Reproducibility archive
 archive/

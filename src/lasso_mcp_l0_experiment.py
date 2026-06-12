@@ -6,19 +6,18 @@ This module implements Lasso (L1), L0, and MCP regularization methods
 as a standalone comparison tool for hierarchical network regression.
 
 Key Features:
-- Lasso (L1) with traditional path selection 
-- L0 regularization with coordinate descent (last lambda)
-- MCP with Wasserstein distance selection (same as SCAD)
+- Lasso (L1), L0, and MCP regularization baselines
+- Wasserstein-based hyperparameter selection workflow
 - Independent execution and evaluation
 - Support for both original and merged matrices
 
 Usage:
-    python method/lasso_mcp_l0_experiment.py                                 # Run all methods with default data (10 experiments)
-    python method/lasso_mcp_l0_experiment.py --data data/city1.xlsx          # Use custom data file
-    python method/lasso_mcp_l0_experiment.py --method Lasso                  # Run single method
-    python method/lasso_mcp_l0_experiment.py --merge                         # Use merged matrix
-    python method/lasso_mcp_l0_experiment.py --experiments 10                # Run 10 experiments
-    python method/lasso_mcp_l0_experiment.py --save results/output.xlsx      # Save results to file
+    python src/lasso_mcp_l0_experiment.py                                 # Run all methods with default data (10 experiments)
+    python src/lasso_mcp_l0_experiment.py --data data/city1.xlsx          # Use custom data file
+    python src/lasso_mcp_l0_experiment.py --method Lasso                  # Run single method
+    python src/lasso_mcp_l0_experiment.py --merge                         # Use merged matrix
+    python src/lasso_mcp_l0_experiment.py --experiments 10                # Run 10 experiments
+    python src/lasso_mcp_l0_experiment.py --save results/output.xlsx      # Save results to file
 """
 
 import numpy as np
@@ -554,13 +553,13 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-    python method/lasso_mcp_l0_experiment.py                                # Run all methods with default data (10 experiments)
-    python method/lasso_mcp_l0_experiment.py --data your_data.xlsx          # Use custom data file
-    python method/lasso_mcp_l0_experiment.py --method Lasso                 # Run single method
-    python method/lasso_mcp_l0_experiment.py --merge                        # Use merged matrix
-    python method/lasso_mcp_l0_experiment.py --ratio 0.15 --seed 123       # Custom parameters
-    python method/lasso_mcp_l0_experiment.py --experiments 20               # Run 20 experiments
-    python method/lasso_mcp_l0_experiment.py --save results.xlsx           # Save results to file
+    python src/lasso_mcp_l0_experiment.py                                # Run all methods with default data (10 experiments)
+    python src/lasso_mcp_l0_experiment.py --data your_data.xlsx          # Use custom data file
+    python src/lasso_mcp_l0_experiment.py --method Lasso                 # Run single method
+    python src/lasso_mcp_l0_experiment.py --merge                        # Use merged matrix
+    python src/lasso_mcp_l0_experiment.py --ratio 0.15 --seed 123       # Custom parameters
+    python src/lasso_mcp_l0_experiment.py --experiments 20               # Run 20 experiments
+    python src/lasso_mcp_l0_experiment.py --save results.xlsx           # Save results to file
         """
     )
     

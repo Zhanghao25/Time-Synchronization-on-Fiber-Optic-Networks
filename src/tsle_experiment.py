@@ -7,7 +7,7 @@ Simple 4-step SCAD algorithm implementation for real data.
 - Steps 2-4: Use merged matrix data (merge=True)
 
 Usage:
-    python method/tsle_experiment.py --data data/city1.xlsx --experiments 10 --save results/scad_results.xlsx
+    python src/tsle_experiment.py --data data/city1.xlsx --experiments 10 --save results/scad_results.xlsx
 """
 
 import sys
@@ -29,11 +29,8 @@ from tsle_methods import (
     tsle_step4_iterative
 )
 
-from utils import (
-    load_network_data, 
-    generate_synthetic_data,
-    Evaluator
-)
+from utils import load_network_data, generate_synthetic_data
+from evaluation_metrics import Evaluator
 from tree_structure import Tree
 
 import pandas as pd
