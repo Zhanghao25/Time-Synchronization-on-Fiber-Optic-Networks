@@ -7,14 +7,14 @@ This repository is the reproducibility package for the manuscript: *On Large-Sca
 ```text
 .
 ├── README.md
-├── requirements.txt
-├── configs/
-├── data/
+├── requirements.txt           # Python dependencies and recorded R environment information
+├── configs/                   # Random seed schedules for reproducing the reported tables and figures
+├── data/                      # Input datasets, including real-world and synthetic fiber-optic network topologies
 │   ├── city1.xlsx
 │   ├── city2.xlsx
 │   ├── city3.xlsx
 │   └── synthetic_topologies/
-├── src/
+├── src/                       # Python source code for methods, experiment drivers, and evaluation
 │   ├── build_synthetic_topologies.py
 │   ├── compute_lur_metrics.py
 │   ├── evaluation_metrics.py
@@ -27,15 +27,15 @@ This repository is the reproducibility package for the manuscript: *On Large-Sca
 │   ├── tsle_experiment.py
 │   ├── tsle_methods.py
 │   └── utils.py
-├── scripts/
+├── scripts/                   # Shell scripts for reproducing reported tables and figures
 └── results/
-    ├── raw/
+    ├── raw/                   # Raw experiment outputs used for rendering tables and figures
     │   ├── main_scad/
     │   ├── other_methods/
     │   ├── synthetic/
     │   └── lur_figures/
-    ├── tables/
-    └── figures/
+    ├── tables/                # Reproduced paper tables in CSV format
+    └── figures/               # Reproduced paper figures in PNG format
 ```
 
 ## 2. Installation
@@ -114,13 +114,13 @@ The `src/` folder contains the Python source code for the proposed method, basel
 ### 4.2. Experiment Drivers
 
 - [`tsle_experiment.py`](src/tsle_experiment.py)
-  Runs the repeated simulation experiments for the proposed four-step TSLE procedure under a given network topology and sparsity ratio, following the random seed schedule.
+  Driver for the repeated TSLE experiments on a given real-network workbook and sparsity ratio. It reads the configured seed schedule and writes the canonical raw result workbooks under `results/raw/main_scad/`.
 
 - [`lasso_mcp_l0_experiment.py`](src/lasso_mcp_l0_experiment.py)
-  Runs the repeated simulation experiments for the baseline methods, including Lasso, MCP, and L0-penalized estimation, under the same network topology, sparsity ratio, and random seed schedule.
+  Driver for the repeated baseline-method experiments, including Lasso, MCP, and L0-penalized estimation, on a given real-network workbook and sparsity ratio. It writes the canonical raw result workbooks under `results/raw/other_methods/`.
 
 - [`synthetic_experiment.py`](src/synthetic_experiment.py)
-  Runs the repeated simulation experiments on the synthetic tree topologies in `synthetic_topologies_combined.xlsx`.
+  Driver for the repeated synthetic experiments used in Table S.7 on `synthetic_topologies_combined.xlsx`. It writes the canonical raw result workbooks under `results/raw/synthetic/`.
 
 ### 4.3. Result Processing
 
@@ -136,47 +136,63 @@ The `src/` folder contains the Python source code for the proposed method, basel
 - [`make_paper_results.py`](src/make_paper_results.py)
   Utilities for generating the final paper tables (csv) and figures (png) from the canonical workbooks.
 
-## 5. Reproducing the Results
+## 5. Running Experiments and Generating Paper Outputs
 
-Each paper output has its own entrypoint (default mode `full`; pass `smoke` for a quick validation run):
+### 5.1. Random Seed Settings
+
+All reported results are generated using fixed random seeds. In the full reproduction workflow, each stochastic configuration is repeated 100 times. The exact seed lists are recorded under `configs/seeds/` and are read automatically by the reproduction scripts.
+
+- [`configs/seeds/tables_current.json`](configs/seeds/tables_current.json) stores the seed lists for table-related stochastic experiments, including Table 1 and Tables S.2–S.7.
+- [`configs/seeds/figures/`](configs/seeds/figures/) stores the seed lists for the LUR-figure experiments, with one JSON file for each city:
+  - `city1_final.json` for Figure 5;
+  - `city2_final.json` for Figure S.5;
+  - `city3_final.json` for Figure S.6.
+
+The explicit seed lists in these JSON files are the source of truth for reproducing the submitted numerical results.
+
+### 5.2. Reproducing Tables and Figures
+
+The `scripts/` folder provides a separate shell script for reproducing each reported table or figure. Running the corresponding command regenerates the output files under `results/tables/` or `results/figures/`:
 
 ```bash
-bash scripts/run_table_1.sh        # Table 1
-bash scripts/run_table_s1.sh       # Table S.1
-bash scripts/run_table_s2.sh       # Table S.2
-bash scripts/run_table_s3.sh       # Table S.3
-bash scripts/run_table_s4.sh       # Table S.4
-bash scripts/run_table_s5.sh       # Table S.5
-bash scripts/run_table_s6.sh       # Table S.6
-bash scripts/run_table_s7.sh       # Table S.7
-bash scripts/run_figure5.sh        # Figure 5
-bash scripts/run_figure_s5.sh      # Figure S.5
-bash scripts/run_figure_s6.sh      # Figure S.6
+# Main paper outputs
+bash scripts/run_table_1.sh        # Reproduce Table 1
+bash scripts/run_figure5.sh        # Reproduce Figure 5
+
+# Supplementary tables
+bash scripts/run_table_s1.sh       # Reproduce Table S.1
+bash scripts/run_table_s2.sh       # Reproduce Table S.2
+bash scripts/run_table_s3.sh       # Reproduce Table S.3
+bash scripts/run_table_s4.sh       # Reproduce Table S.4
+bash scripts/run_table_s5.sh       # Reproduce Table S.5
+bash scripts/run_table_s6.sh       # Reproduce Table S.6
+bash scripts/run_table_s7.sh       # Reproduce Table S.7
+
+# Supplementary figures
+bash scripts/run_figure_s5.sh      # Reproduce Figure S.5
+bash scripts/run_figure_s6.sh      # Reproduce Figure S.6
 ```
 
-Each script recomputes the raw experiments behind one paper output and refreshes the rendered tables/figures; running all of them reproduces every reported result. Alternatively, `python src/make_paper_results.py` re-renders all tables and figures directly from the shipped `results/raw/` workbooks within minutes, while full experimental recomputation is deterministic but requires a high-memory machine and hours to days per table.
+The generated intermediate workbooks are saved under `results/raw/`. The final rendered tables and figures are saved under `results/tables/` and `results/figures/`, respectively. The final paper outputs are generated from these canonical raw workbooks. For example, the values reported in Table 1 are taken from the `*_mean` columns in the `Summary` sheets of the corresponding TSLE result workbooks under `results/raw/main_scad/`.
 
-### Random Seeds
+If the canonical raw workbooks under `results/raw/` are already available, all final tables and figures can be regenerated directly within minutes without rerunning experiments:
 
-The shipped paper outputs are based on deterministic repeated runs (100 seeds per configuration):
-
-- Seed schedules are stored under `configs/seeds/` and read automatically by the scripts in full mode; explicit seed lists in the JSON files define the exact shipped schedules.
-- TSLE, synthetic, and LUR figure launchers use base seed 42; Lasso/L0/MCP launchers use base seed 0. Step 3 random augmentation uses fixed seed 42.
-- Synthetic topology generation itself is fixed and deterministic.
-- [`configs/seeds/tables_current.json`](configs/seeds/tables_current.json): table seed schedules; [`configs/seeds/figures/city{1,2,3}_final.json`](configs/seeds/figures/): per-alpha seed lists for Figure 5, S.5, S.6.
+```bash
+python src/make_paper_results.py
+```
 
 ## 6. Results
 
-| Paper Output | Command | Input Data | Result File |
-|---|---|---|---|
-| Table 1 (TSLE, α=1%,5%,10%) | `bash scripts/run_table_1.sh` | `data/city{1,2,3}.xlsx` | `results/raw/main_scad/scad_city{N}_ratio{R}.xlsx` → `results/tables/table1.csv` |
-| Table S.1 (network summary) | `bash scripts/run_table_s1.sh` | `data/city{1,2,3}.xlsx` | `results/tables/table_s1.csv` |
-| Table S.2 (Lasso/L0/MCP, original, α=1%,5%,10%) | `bash scripts/run_table_s2.sh` | `data/city{1,2,3}.xlsx` | `results/raw/other_methods/othermethods_original_city{N}_ratio{R}.xlsx` → `results/tables/table_s2.csv` |
-| Table S.3 (Lasso/L0/MCP, original, α=15%,20%,30%) | `bash scripts/run_table_s3.sh` | `data/city{1,2,3}.xlsx` | `results/raw/other_methods/othermethods_original_city{N}_ratio{R}.xlsx` → `results/tables/table_s3.csv` |
-| Table S.4 (Lasso/L0/MCP, merged, α=1%,5%,10%) | `bash scripts/run_table_s4.sh` | `data/city{1,2,3}.xlsx` | `results/raw/other_methods/othermethods_merged_city{N}_ratio{R}.xlsx` → `results/tables/table_s4.csv` |
-| Table S.5 (Lasso/L0/MCP, merged, α=15%,20%,30%) | `bash scripts/run_table_s5.sh` | `data/city{1,2,3}.xlsx` | `results/raw/other_methods/othermethods_merged_city{N}_ratio{R}.xlsx` → `results/tables/table_s5.csv` |
-| Table S.6 (TSLE, α=15%,20%,30%) | `bash scripts/run_table_s6.sh` | `data/city{1,2,3}.xlsx` | `results/raw/main_scad/scad_city{N}_ratio{R}.xlsx` → `results/tables/table_s6.csv` |
-| Table S.7 (synthetic) | `bash scripts/run_table_s7.sh` | `data/synthetic_topologies/synthetic_topologies_combined.xlsx` | `results/raw/synthetic/synthetic_zeta{1pct,5pct,10pct}_alpha10.xlsx` → `results/tables/table_s7.csv` |
-| Figure 5 (City 1 LUR) | `bash scripts/run_figure5.sh` | `data/city1.xlsx` | `results/raw/lur_figures/lur_city1_metrics.xlsx` → `results/figures/figure5_city1.png` |
-| Figure S.5 (City 2 LUR) | `bash scripts/run_figure_s5.sh` | `data/city2.xlsx` | `results/raw/lur_figures/lur_city2_metrics.xlsx` → `results/figures/figure_s5_city2.png` |
-| Figure S.6 (City 3 LUR) | `bash scripts/run_figure_s6.sh` | `data/city3.xlsx` | `results/raw/lur_figures/lur_city3_metrics.xlsx` → `results/figures/figure_s6_city3.png` |
+| Paper Output | Script | Input Data | Result Files | Seed Configuration |
+|---|---|---|---|---|
+| Table 1 | `bash scripts/run_table_1.sh` | `data/city{1,2,3}.xlsx` | raw result workbooks: `results/raw/main_scad/scad_city{N}_ratio{R}.xlsx` for `R = 0.01, 0.05, 0.10`; final table: `results/tables/table1.csv` | seed list specified under `tables.scad_main` in `configs/seeds/tables_current.json` |
+| Table S.1 | `bash scripts/run_table_s1.sh` | `data/city{1,2,3}.xlsx` | `results/tables/table_s1.csv` | no random seed is used |
+| Table S.2 | `bash scripts/run_table_s2.sh` | `data/city{1,2,3}.xlsx` | raw result workbooks: `results/raw/other_methods/othermethods_original_city{N}_ratio{R}.xlsx` for `R = 0.01, 0.05, 0.10`; final table: `results/tables/table_s2.csv` | seed list specified under `tables.other_methods_original` in `configs/seeds/tables_current.json` |
+| Table S.3 | `bash scripts/run_table_s3.sh` | `data/city{1,2,3}.xlsx` | raw result workbooks: `results/raw/other_methods/othermethods_original_city{N}_ratio{R}.xlsx` for `R = 0.15, 0.20, 0.30`; final table: `results/tables/table_s3.csv` | seed list specified under `tables.other_methods_original` in `configs/seeds/tables_current.json` |
+| Table S.4 | `bash scripts/run_table_s4.sh` | `data/city{1,2,3}.xlsx` | raw result workbooks: `results/raw/other_methods/othermethods_merged_city{N}_ratio{R}.xlsx` for `R = 0.01, 0.05, 0.10`; final table: `results/tables/table_s4.csv` | seed list specified under `tables.other_methods_merged` in `configs/seeds/tables_current.json` |
+| Table S.5 | `bash scripts/run_table_s5.sh` | `data/city{1,2,3}.xlsx` | raw result workbooks: `results/raw/other_methods/othermethods_merged_city{N}_ratio{R}.xlsx` for `R = 0.15, 0.20, 0.30`; final table: `results/tables/table_s5.csv` | seed list specified under `tables.other_methods_merged` in `configs/seeds/tables_current.json` |
+| Table S.6 | `bash scripts/run_table_s6.sh` | `data/city{1,2,3}.xlsx` | raw result workbooks: `results/raw/main_scad/scad_city{N}_ratio{R}.xlsx` for `R = 0.15, 0.20, 0.30`; final table: `results/tables/table_s6.csv` | seed list specified under `tables.scad_main` in `configs/seeds/tables_current.json` |
+| Table S.7 | `bash scripts/run_table_s7.sh` | `data/synthetic_topologies/synthetic_topologies_combined.xlsx` | raw result workbooks: `results/raw/synthetic/synthetic_zeta{1pct,5pct,10pct}_alpha10.xlsx`; final table: `results/tables/table_s7.csv` | seed list specified under `tables.synthetic_s7` in `configs/seeds/tables_current.json` |
+| Figure 5 | `bash scripts/run_figure5.sh` | `data/city1.xlsx` | raw result workbooks: `results/raw/lur_figures/lur_city1_metrics.xlsx`; final figure: `results/figures/figure5_city1.png` | seed list specified under `configs/seeds/figures/city1_final.json` |
+| Figure S.5 | `bash scripts/run_figure_s5.sh` | `data/city2.xlsx` | raw result workbooks: `results/raw/lur_figures/lur_city2_metrics.xlsx`; final figure: `results/figures/figure_s5_city2.png` | seed list specified under `configs/seeds/figures/city2_final.json` |
+| Figure S.6 | `bash scripts/run_figure_s6.sh` | `data/city3.xlsx` | raw result workbooks: `results/raw/lur_figures/lur_city3_metrics.xlsx`; final figure: `results/figures/figure_s6_city3.png` | seed list specified under `configs/seeds/figures/city3_final.json` |
