@@ -937,10 +937,29 @@ def export_readable_outputs(city_tables: Dict[str, pd.DataFrame], readable_dir: 
         plt.close(fig)
 
 
-def build_all_figures(metrics_dir: Path, figures_dir: Path) -> None:
-    city_tables = {city: load_city_summary(city, metrics_dir) for city in CITY_META}
+def build_all_figures(metrics_dir: Path, figures_dir: Path, cities: Optional[List[str]] = None) -> None:
+    selected = list(CITY_META) if not cities else [city for city in CITY_META if city in cities]
+    if cities:
+        unknown = [c for c in cities if c not in CITY_META]
+        if unknown:
+            raise ValueError(f"Unknown city/cities for figures: {unknown}. Valid: {list(CITY_META)}")
+    city_tables = {city: load_city_summary(city, metrics_dir) for city in selected}
     export_readable_outputs(city_tables, figures_dir)
     print(f"Paper figures written to: {figures_dir}")
+
+
+def parse_city_filter(raw: Optional[str]) -> Optional[List[str]]:
+    """Map a user string like '1', 'city1', '1 2 3' to canonical ['City 1', ...]."""
+    if not raw:
+        return None
+    name_by_num = {"1": "City 1", "2": "City 2", "3": "City 3"}
+    cities: List[str] = []
+    for tok in re.split(r"[,\s]+", raw.strip()):
+        if not tok:
+            continue
+        key = tok.lower().replace("city", "").strip()
+        cities.append(name_by_num.get(key, tok))
+    return cities or None
 
 
 def main() -> None:
@@ -956,6 +975,9 @@ def main() -> None:
                         help="Also export a combined all_tables.tex file.")
     parser.add_argument("--allow-missing", action="store_true",
                         help="Render missing expected table entries as '--' instead of failing.")
+    parser.add_argument("--cities", type=str, default=None,
+                        help="Restrict figure building to these cities (e.g. '1', 'city1', '1 2 3'). "
+                             "Default: all cities. Lets a single figure be reproduced without the others.")
     args = parser.parse_args()
 
     do_tables = args.tables or not args.figures
@@ -966,7 +988,7 @@ def main() -> None:
         build_all_tables(args.results_root, allow_missing=args.allow_missing, export_tex=args.export_tex)
     if do_figures:
         FIGURES_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-        build_all_figures(metrics_dir, FIGURES_OUTPUT_DIR)
+        build_all_figures(metrics_dir, FIGURES_OUTPUT_DIR, cities=parse_city_filter(args.cities))
 
 
 if __name__ == "__main__":

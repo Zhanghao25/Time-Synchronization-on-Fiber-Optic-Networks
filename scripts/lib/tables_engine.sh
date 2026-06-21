@@ -530,7 +530,14 @@ case "$TARGET" in
     ;;
 esac
 
-refresh_tables
+# For a single/partial target (e.g. reproducing only Table 1), the other tables'
+# raw workbooks may be absent, so render leniently to avoid failing on them.
+# A full ("all") run stays strict to surface any genuinely incomplete results.
+if [[ "$TARGET" == "all" ]]; then
+  refresh_tables
+else
+  refresh_tables allow-missing
+fi
 export_tex_if_requested
 
 echo

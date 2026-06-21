@@ -147,6 +147,6 @@ fi
 
 echo "[figure] building canonical readable figures"
 conda run -n "${CONDA_ENV}" python -u src/make_paper_results.py --figures \
-  --metrics-dir "${RESULTS_DIR}"
+  --metrics-dir "${RESULTS_DIR}" --cities "${CITIES}"
 
 echo "[done] outputs in ${OUTPUT_DIR}"
